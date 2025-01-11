@@ -3,6 +3,7 @@ src/CalculiX
 src/*.a
 
 doc/*.pdf
+doc/*.ps
 doc/*.aux
 doc/*.dvi
 doc/*.fdb_latexmk
@@ -33,3 +34,6 @@ test/*.fbd
 test/*.out
 test/*.sen0
 test/*.sen1
+
+examples/
+.DS_Store
