@@ -1,0 +1,14 @@
+{
+    "configurations": [
+      {
+        "name": "Mac",
+        "compilerPath": "/opt/homebrew/bin/gcc-14",
+        "intelliSenseMode": "macos-gcc-arm64",
+        "includePath": ["../spooles.2.2"],
+        "defines": ["ARCH=Linux", "SPOOLES", "USE_MT=1", "ARPACK", "NETWORKOUT", "MATRIXSTORAGE"],
+        "cStandard": "c11",
+        "cppStandard": "c++11"
+      }
+    ],
+    "version": 4
+}
