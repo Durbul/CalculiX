@@ -31,5 +31,8 @@ CalculiX: $(OCCXMAIN) libCalculiX.a
 libCalculiX.a: $(OCCXF) $(OCCXC)
 	ar vr $@ $?
 
+doc:
+	cd ../doc; latexmk -pdf -ps CalculiX.tex
+
 clean:
 	rm -rf *.o *.a
