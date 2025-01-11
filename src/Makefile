@@ -1,8 +1,15 @@
+INCLUDES=../../spooles.2.2
 
-CFLAGS = -Wall -g  -I ../../SPOOLES.2.2 -DARCH="Linux" -DSPOOLES -DARPACK -DMATRIXSTORAGE -DNETWORKOUT
-FFLAGS = -Wall -g -cpp 
+LIBS = \
+  ../../spooles.2.2/spooles.a \
+  ../../arpack/libarpack_arm.a \
+  -lpthread -lm -lc -L/opt/homebrew/opt/libomp/lib -lomp \
+  -framework Accelerate
 
-CC=cc
+CFLAGS = -Wall -O3 -I $(INCLUDES) -DARCH="Linux" -DSPOOLES -DARPACK -DMATRIXSTORAGE -DNETWORKOUT -DUSE_MT=1
+FFLAGS = -Wall -O3 -fopenmp
+
+CC=gcc-14
 FC=gfortran
 
 .c.o :
@@ -18,15 +25,11 @@ OCCXF = $(SCCXF:.f=.o)
 OCCXC = $(SCCXC:.c=.o)
 OCCXMAIN = $(SCCXMAIN:.c=.o)
 
-DIR=../../SPOOLES.2.2
+CalculiX: $(OCCXMAIN) libCalculiX.a
+	./date.pl; $(CC) $(CFLAGS) -c CalculiX.c; $(FC) -o $@ $(OCCXMAIN) libCalculiX.a $(LIBS) -fopenmp
 
-LIBS = \
-       $(DIR)/spooles.a \
-	../../ARPACK/libarpack_INTEL.a \
-       -lpthread -lm -lc
-
-CalculiX: $(OCCXMAIN) CalculiX.a  $(LIBS)
-	./date.pl; $(CC) $(CFLAGS) -c CalculiX.c; $(FC)  -Wall -g -o $@ $(OCCXMAIN) CalculiX.a $(LIBS) -fopenmp
-
-CalculiX.a: $(OCCXF) $(OCCXC)
+libCalculiX.a: $(OCCXF) $(OCCXC)
 	ar vr $@ $?
+
+clean:
+	rm -rf *.o *.a
