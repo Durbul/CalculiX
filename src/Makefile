@@ -7,7 +7,7 @@ LIBS = \
   -framework Accelerate
 
 CFLAGS = -Wall -O3 -I $(INCLUDES) -DARCH="Linux" -DSPOOLES -DARPACK -DMATRIXSTORAGE -DNETWORKOUT -DUSE_MT=1
-FFLAGS = -Wall -O3 -fopenmp
+FFLAGS = -Wall -O3 -fopenmp -cpp
 
 CC=gcc-14
 FC=gfortran
