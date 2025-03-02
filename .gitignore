@@ -11,6 +11,7 @@ doc/*.fls
 doc/*.log
 doc/*.out
 doc/*.toc
+doc/*.xdv
 
 test/*.12d
 test/*.cvg
