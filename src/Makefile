@@ -26,7 +26,8 @@ OCCXC = $(SCCXC:.c=.o)
 OCCXMAIN = $(SCCXMAIN:.c=.o)
 
 CalculiX: $(OCCXMAIN) libCalculiX.a
-	./date.pl; $(CC) $(CFLAGS) -c CalculiX.c; $(FC) -o $@ $(OCCXMAIN) libCalculiX.a $(LIBS) -fopenmp
+	$(CC) $(CFLAGS) -c CalculiX.c; $(FC) -o $@ $(OCCXMAIN) libCalculiX.a $(LIBS) -fopenmp
+#	./date.pl; $(CC) $(CFLAGS) -c CalculiX.c; $(FC) -o $@ $(OCCXMAIN) libCalculiX.a $(LIBS) -fopenmp
 
 libCalculiX.a: $(OCCXF) $(OCCXC)
 	ar vr $@ $?
