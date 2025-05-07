@@ -1,5 +1,5 @@
 src/*.o
-src/CalculiX
+src/CalculiX_*
 src/*.a
 
 doc/*.pdf

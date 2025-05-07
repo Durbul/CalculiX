@@ -1,0 +1,59 @@
+# https://calculix.discourse.group/t/building-calculix-with-pastix-on-freebsd-without-cuda/2228
+
+PASTIX_DIR=../../PaStiX4CalculiX/build
+SCOTCH_DIR=/opt/homebrew/Cellar/scotch/7.0.7
+HWLOC_DIR=/opt/homebrew/Cellar/hwloc/2.12.0
+BLAS_DIR=/opt/homebrew/Cellar/openblas/0.3.29
+LAPACK_DIR=/opt/homebrew/Cellar/lapack/3.12.1
+
+INCLUDES= \
+  $(PASTIX_DIR)/include \
+
+LIBS = \
+  ../../arpack/libarpack_arm.a \
+  $(PASTIX_DIR)/lib/libpastix.a \
+  $(PASTIX_DIR)/lib/libpastix_kernels.a \
+  $(PASTIX_DIR)/lib/libspm.a \
+  $(SCOTCH_DIR)/lib/libscotch.dylib \
+  $(SCOTCH_DIR)/lib/libscotcherrexit.dylib \
+  $(HWLOC_DIR)/lib/libhwloc.dylib \
+  $(LAPACK_DIR)/lib/liblapacke.dylib \
+  -lpthread -lm -lc -L/opt/homebrew/opt/libomp/lib -lomp \
+  -lstdc++ \
+  -framework Accelerate
+
+CFLAGS = -Wall -O3 -I $(INCLUDES) -DARCH="Linux" -DPASTIX -DARPACK -DMATRIXSTORAGE -DNETWORKOUT -Wno-error=implicit-function-declaration -Wno-error=int-conversion \
+  -I$(PASTIX_DIR)/include \
+  -I$(SCOTCH_DIR)/include \
+  -I$(HWLOC_DIR)/include \
+  -I$(BLAS_DIR)/include
+FFLAGS = -Wall -O3 -fopenmp -cpp
+
+CC=gcc-14
+FC=gfortran-14
+
+.c.o :
+	$(CC) $(CFLAGS) -c $<
+.f.o :
+	$(FC) $(FFLAGS) -c $<
+
+include Makefile.inc
+
+SCCXMAIN = CalculiX.c
+
+OCCXF = $(SCCXF:.f=.o)
+OCCXC = $(SCCXC:.c=.o)
+OCCXMAIN = $(SCCXMAIN:.c=.o)
+
+CalculiX_PaStiX_i4: $(OCCXMAIN) libCalculiX.a
+	$(CC) $(CFLAGS) -c CalculiX.c; $(FC) -o $@ $(OCCXMAIN) libCalculiX.a $(LIBS) -fopenmp
+#	./date.pl; $(CC) $(CFLAGS) -c CalculiX.c; $(FC) -o $@ $(OCCXMAIN) libCalculiX.a $(LIBS) -fopenmp
+
+libCalculiX.a: $(OCCXF) $(OCCXC)
+	ar vr $@ $?
+
+doc:
+	cd ../doc; latexmk -pdf -ps CalculiX.tex
+
+clean:
+	rm -rf *.o *.a
