@@ -9,8 +9,8 @@ LIBS = \
 CFLAGS = -Wall -O3 -I $(INCLUDES) -DARCH="Linux" -DSPOOLES -DARPACK -DMATRIXSTORAGE -DNETWORKOUT -DUSE_MT=1
 FFLAGS = -Wall -O3 -fopenmp -cpp
 
-CC=gcc-14
-FC=gfortran
+CC=gcc-15
+FC=gfortran-15
 
 .c.o :
 	$(CC) $(CFLAGS) -c $<
