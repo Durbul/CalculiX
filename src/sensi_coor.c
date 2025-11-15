@@ -335,7 +335,8 @@ void sensi_coor(double *co,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
   FORTRAN(normalsonsurface_se,(ipkon,kon,lakon,extnor,co,nk,ipoface,
 			       nodface,nactdof,mi,nodedesiinv,&iregion,
 			       iponoelfa,ndesi,nodedesi,nod2nd3rd,
-			       ikboun,nboun,ne2d)); 
+			       ikboun,nboun,ne2d,knor2d,iponoel2d,iponor2d,
+			       inoel2d,ne)); 
       
   /* if the sensitivity calculation is used in a optimization script
      this script usually contains a loop consisting of:
@@ -423,7 +424,7 @@ void sensi_coor(double *co,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
       
   /* calculation of the smallest distance between nodes */
       
-  FORTRAN(smalldist,(co,&distmin,lakon,ipkon,kon,ne));
+  FORTRAN(smalldist,(co,&distmin,lakon,ipkon,kon,ne,ne2d));
 
   /* resizing xdesi to a length of distmin */
 
@@ -537,7 +538,7 @@ void sensi_coor(double *co,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
       NNEW(ad,double,neq[1]);
       NNEW(adb,double,neq[1]);
       NNEW(au,double,nzsprevstep[2]);
-      NNEW(aub,double,nzs[1]);
+      NNEW(aub,double,nzsprevstep[2]);
 	  
       if(fread(ad,sizeof(double),neq[1],f1)!=neq[1]){
 	printf(" *ERROR in sensi_coor reading the diagonal of the stiffness matrix in the eigenvalue file");
@@ -566,7 +567,7 @@ void sensi_coor(double *co,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
 	exit(0);
       }
 	  
-      if(fread(aub,sizeof(double),nzs[1],f1)!=nzs[1]){
+      if(fread(aub,sizeof(double),nzsprevstep[2],f1)!=nzsprevstep[2]){
 	printf(" *ERROR in sensi_coor reading the off-diagonals of the mass matrix in the  eigenvalue file");
 	printf(" *INFO  in sensi_coor: if there are problems reading the .eig file this may be due to:\n");
 	printf("        1) the nonexistence of the .eig file\n");

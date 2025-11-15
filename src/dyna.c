@@ -399,7 +399,7 @@ void dyna(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,ITG *ne,
     NNEW(ad,double,neq[1]);
     NNEW(adb,double,neq[1]);
     NNEW(au,double,nzs[2]);
-    NNEW(aub,double,nzs[1]);
+    NNEW(aub,double,nzs[2]);
       
     if(fread(ad,sizeof(double),neq[1],f1)!=neq[1]){
       printf(" *ERROR in dyna reading the diagonal of the stiffness matrix in the eigenvalue file");
@@ -428,7 +428,7 @@ void dyna(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,ITG *ne,
       exit(0);
     }
       
-    if(fread(aub,sizeof(double),nzs[1],f1)!=nzs[1]){
+    if(fread(aub,sizeof(double),nzs[2],f1)!=nzs[2]){
       printf(" *ERROR in dyna reading the off-diagonals of the mass matrix in the  eigenvalue file");
       printf(" *INFO  in dyna: if there are problems reading the .eig file this may be due to:\n");
       printf("        1) the nonexistence of the .eig file\n");
@@ -1091,7 +1091,7 @@ void dyna(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,ITG *ne,
     }
 
     if(*idrct!=1){
-      printf(" *ERROR in dyna: variable increment length is not allwed in combination with prescribed boundaries\n");
+      printf(" *ERROR in dyna: variable increment length is not allowed in combination with prescribed boundaries\n");
       FORTRAN(stop,());
     }
       
@@ -1981,7 +1981,7 @@ void dyna(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,ITG *ne,
 
     RENEW(ialset,ITG,nalset_);
 
-    /* restore the infomration in istartset and iendset */
+    /* restore the information in istartset and iendset */
 
     for(j=0; j<*nset; j++){
       istartset[j]=istartset_[j];

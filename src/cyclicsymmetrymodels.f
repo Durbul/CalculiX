@@ -39,7 +39,7 @@
 !     cs(4,mcs): # nodes on the independent side (for fluids: upper bound)
 !     cs(5,mcs): # sectors to be plotted
 !     cs(6..8,mcs): first point on cyclic symmetry axis
-!     cs(9..11,mcs): second point on cylic symmetry axis; turning
+!     cs(9..11,mcs): second point on cyclic symmetry axis; turning
 !     the slave surface clockwise about the cyclic symmetry axis
 !     while looking from the first point to the second point one
 !     arrives at the master surface without leaving the body
@@ -1248,7 +1248,8 @@ c     &         (dabs(zp-zpd).lt.1.d-10)) then
           if(ichar(jobnamec(1)(ilen:ilen)).eq.0) exit
         enddo
         ilen=ilen-1
-        fn=jobnamec(1)(1:ilen)//'_WarnNodeMissCyclicSymmetry.nam'
+        fn=jobnamec(1)(1:ilen)//'_WarnNodeMissCyclicSymmetry_'//
+     &       tie(1:index(tie,' ')-1)//'.nam'
         open(40,file=fn,status='unknown')
         write(40,*) '*NSET,NSET=WarnNodeCyclicSymmetry'
         icount=0
@@ -1392,11 +1393,11 @@ c     &         (dabs(zp-zpd).lt.1.d-10)) then
         write(*,*) '        node in a cyclic symmetry definition no '
         write(*,*) '        independent counterpart was found.'
         write(*,*) '        Failed nodes are stored in file '
-        write(*,*) '        ',fn(1:ilen+31)
+        write(*,*) '        ',fn(1:index(fn,' ')-1)
         write(*,*) '        This file can be loaded into'
         write(*,*) '        an active cgx-session by typing'
         write(*,*) 
-     &       '      read ',fn(1:ilen+31),' inp'
+     &       '      read ',fn(1:index(fn,' ')-1),' inp'
         write(*,*)
         close(40)
       else
