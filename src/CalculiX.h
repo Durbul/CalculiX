@@ -385,6 +385,10 @@ void FORTRAN(calcenergy,(ITG *ipkon,char *lakon,ITG *kon,double *co,
                          double *energy,ITG *ielprop,double *prop,ITG *nea,
                          ITG *neb));
 
+void FORTRAN(calcglobmastsurf,(ITG *ne,ITG *ipkon,ITG *kon,char *lakon,
+			       ITG *nk,char *set,ITG *istartset,ITG *iendset,
+			       ITG *ialset,ITG *nset,ITG *nset_,ITG *nalset));
+
 void *calcenergymt(ITG *i);
 
 void FORTRAN(calcexternalwork,(double *co,double *vold,ITG *istartset,
@@ -701,7 +705,9 @@ void checkconvergence(double *co,ITG *nk,ITG *kon,ITG *ipkon,char *lakon,
           double *energy,double *allwk,double *energyref,
           double *emax,double *enres,double *enetoll,double *energyini,
           double *allwkini,double *temax,double *reswk,ITG *ne0,
-	  ITG *neini,double *dampwk,double *dampwkini,double *energystartstep);
+	  ITG *neini,double *dampwk,double *dampwkini,double *energystartstep,
+	  ITG *iramp,ITG *idel,ITG *iponoel,ITG *inoel,ITG *nelcon,
+	  double *elcon,ITG *ncmat_,ITG *ntmat_);
 
 void checkconvnet(ITG *icutb,ITG *iin,
                   double *cam1t,double *cam1f,double *cam1p,
@@ -3103,6 +3109,13 @@ void mastructse(ITG *kon,ITG *ipkon,char *lakon,ITG *ne,
               ITG *nodedesi,ITG *ndesi,ITG *icoordinate,ITG *ielorien,
               ITG *istartdesi,ITG *ialdesi);
 
+void FORTRAN(materialramping,(ITG *nelcon,double *elcon,ITG *ncmat_,
+			      ITG *ntmat_,ITG *nmat,ITG *iramp,
+			      double *xramp,ITG *idel,double *xdel,
+			      ITG *nk,ITG *mi,ITG *nactdof,double *b,
+			      ITG *iponoel,ITG *inoel,ITG *idivergence,
+			      ITG *ipkon));
+
 void matrixstorage(double *ad,double **aup,double *adb,double *aub,
                 double *sigma,ITG *icol,ITG **irowp,
                 ITG *neq,ITG *nzs,ITG *ntrans,ITG *inotr,
@@ -3203,8 +3216,9 @@ void FORTRAN(nmatrix,(double *ad,double *au,ITG *jqs,ITG *irows,ITG *ndesi,
 		      ITG *nodedesi,double *dgdxglob,ITG *nactive,ITG *nobject,
 		      ITG *nnlconst,ITG *ipoacti,ITG *nk));         
 
-void FORTRAN(nodebelongstoel,(ITG *iponoel,char *lakon,ITG *ipkon,
-                             ITG *kon,ITG *ne));
+void FORTRAN(nodebelongstoel,(ITG *iponoel,ITG *inoel,ITG *inoelsize,
+			      char *lakon,ITG *ipkon,
+			      ITG *kon,ITG *ne,ITG *nramp));
 
 void FORTRAN(nodesperface,(ITG *ipkonf,ITG *konf,char *lakonf,ITG *nface,
 			   ITG *ielfa,ITG *iponofa,ITG *inofa));
@@ -4704,8 +4718,7 @@ void FORTRAN(slavintpoints,(ITG *ntie,ITG *itietri,ITG *ipkon,
         ITG *kon,char *lakon,double *straight,
         ITG *nintpoint,ITG *koncont,double *co,double *vold,double *xo,
         double *yo,double *zo,double *x,double *y,double *z,ITG *nx,
-        ITG *ny,ITG *nz,ITG *islavsurf,
-        ITG *islavnode,ITG *nslavnode,ITG *imastop,
+        ITG *ny,ITG *nz,ITG *islavsurf,ITG *imastop,
         ITG *mi,ITG *ncont,ITG *ipe,ITG *ime,double *pslavsurf,
         ITG *i,ITG *l,ITG *ntri));
 

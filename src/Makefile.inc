@@ -67,6 +67,7 @@ calcexternalwork.f \
 calcfeasibledirection_gd.f \
 calcfeasibledirection_gp.f \
 calcgeomelemnet.f \
+calcglobmastsurf.f \
 calch0interface.f \
 calcheatnet.f \
 calc_ider_cross_split.f \
@@ -533,6 +534,7 @@ materialdata_rho.f \
 materialdata_sp.f \
 materialdata_tg.f \
 materialdata_th.f \
+materialramping.f \
 materials.f \
 matrix2userelem.f \
 matrixassembles.f \

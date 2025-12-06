@@ -22,11 +22,9 @@
 !     the opposite master surface. For the slave surface the local
 !     coordinates and the integration weight is stored in pslavsurf
 !
-      subroutine slavintpoints(ntie,itietri,ipkon,kon,
-     &     lakon,straight,nintpoint,
-     &     koncont,co,vold,xo,yo,zo,x,y,z,nx,ny,nz,
-     &     islavsurf,islavnode,nslavnode,imastop,
-     &     mi,ncont,ipe,ime,pslavsurf,i,l,ntri)
+      subroutine slavintpoints(ntie,itietri,ipkon,kon,lakon,straight,
+     &     nintpoint,koncont,co,vold,xo,yo,zo,x,y,z,nx,ny,nz,
+     &     islavsurf,imastop,mi,ncont,ipe,ime,pslavsurf,i,l,ntri)
 !
 !     Author: Li, Yang; Rakotonanahary, Samoela; Sitzmann,Saskia
 !
@@ -36,21 +34,20 @@
 !     
       integer ntie,nintpoint,imastop(3,*),ncont,itietri(2,ntie),
      &     ipkon(*),kon(*),koncont(4,*),node,neigh(10),iflag,kneigh,i,
-     &     j,k,l,ii,itri,nx(*),ny(*),nz(*),ifreeintersec,nelemm,jfacem,
-     &     indexe,nnodelem,nope,islavsurf(2,*),islavnode(*),
-     &     nslavnode(ntie+1),ifaces,nelems,jfaces,mi(*),
-     &     m,nopes,konl(20),id,imface(8),ntria,
-     &     imfacecorner(8,8),line,iactiveline(3,3*ncont),
+     &     j,k,l,ii,itri,nx(*),ny(*),nz(*),nelemm,jfacem,
+     &     indexe,nopesm,nope,islavsurf(2,*),ifaces,nelems,jfaces,mi(*),
+     &     m,nopes,konl(20),id,maface(8),nmaface,
+     &     mafacecorner(8,8),line,iactiveline(2,3*ncont),
      &     icoveredmelem(3*ncont),nactiveline,ipe(*),ime(4,*),k1,j1,
-     &     ncoveredmelem,ntri,nintpfirst,nodem(8),nodem2(8),
-     &     il,nodel,getnodel,ifacem,idummy,nopemm,nmp,k2,j2
+     &     ncoveredmelem,ntri,nintpfirst,nodem(8),nodepg(8),
+     &     il,nodel,getnodel,ifacem,idummy,nopem,npg,k2,j2
 !     
       real*8 straight(16,*),co(3,*),vold(0:mi(2),*),
      &     xo(*),yo(*),zo(*),x(*),y(*),z(*),
-     &     xl2m(3,8),xl2s(3,8),xl2m2(3,8),
-     &     pmiddle(3),xl2sr(3,8),xl2sp(3,8),xl2s2(3,8),
-     &     dd,xns(3,8),areaslav,al,xn(3),slavstraight(36),
-     &     err2,dist,distmin,pslavsurf(3,*),err,xquad(2,8),
+     &     xl2m(3,8),xl2s(3,8),xlpg(3,8),
+     &     pmiddle(3),xl2sr(3,8),xl3sp(3,8),xl3s(3,8),
+     &     dd,areaslav,al,xn(3),slavstraight(36),
+     &     pslavsurf(3,*),err,xquad(2,8),
      &     xtri(2,6),xi,et,xsj2(3),xs2(3,2),shp2(7,8),anglesm
 !
       data iflag /2/
@@ -118,37 +115,37 @@
          enddo
          pmiddle(j)=pmiddle(j)/nopes
       enddo
-      do j=1,3
-         do m=1,nopes
-            xl2sr(j,m)=xl2s(j,m)-0.5d0*err*(xl2s(j,m)-pmiddle(j))
-         enddo
-      enddo
+c      do j=1,3
+c         do m=1,nopes
+c            xl2sr(j,m)=xl2s(j,m)-0.5d0*err*(xl2s(j,m)-pmiddle(j))
+c         enddo
+c      enddo
 !
-!     Resort vertices for quadratic elements
+!     sort vertices for quadratic elements in ccw direction
 !     
       if((nopes.eq.3).or.(nopes.eq.4))then
          do j=1,nopes
             do k=1,3
-               xl2s2(k,j)=xl2s(k,j)
+               xl3s(k,j)=xl2s(k,j)
             enddo
          enddo
       else
          do j=1,int(nopes/2.d0)
             do k=1,3
-               xl2s2(k,2*j-1)=xl2s(k,j)
-               xl2s2(k,2*j)=xl2s(k,(int(nopes/2.d0))+j)           
+               xl3s(k,2*j-1)=xl2s(k,j)
+               xl3s(k,2*j)=xl2s(k,(int(nopes/2.d0))+j)           
             enddo
          enddo
       endif
 !     
-!     calculate the mean normal vector on the Slave Surface
+!     calculate the mean normal vector xn on the slave face
 !     +
-!     determine the equations of the triangle/quadrilateral
-!     (mean)plane and of the planes boardering the 
-!     triangle/quadrilateral
+!     determine the equations of the slave face
+!     (mean)plane and of the planes perpendicular to its 
+!     piecewise linear approximation 
 !     
       if(nopes.eq.3) then
-         call straighteq3d(xl2s2,slavstraight)
+         call straighteq3d(xl3s,slavstraight)
          do k=1,3
             xn(k)=slavstraight(4*nopes+k)
          enddo               
@@ -186,40 +183,40 @@
             enddo
          enddo 
 !     
-!     normalizing the mean normal on the Slave surface
+!     normalizing the mean normal on the slave surface
 !     
          dd=dsqrt(xn(1)**2+xn(2)**2+xn(3)**2)
          do k=1,3
             xn(k)=xn(k)/dd
          enddo           
-         call approxplane(xl2s2,slavstraight,xn,nopes)
+         call approxplane(xl3s,slavstraight,xn,nopes)
       endif
 !     
 !     Project slave nodes to meanplane, needed for Sutherland-Hodgman
 !     
       do j=1,nopes
-         al=-xn(1)*xl2s2(1,j)-xn(2)*
-     &        xl2s2(2,j)-xn(3)*xl2s2(3,j)-
+         al=-xn(1)*xl3s(1,j)-xn(2)*
+     &        xl3s(2,j)-xn(3)*xl3s(3,j)-
      &        slavstraight(nopes*4+4)
          if(nopes.ne.3)then
             do k=1,3
-               xl2sp(k,j)=xl2s2(k,j)+al*xn(k)
+               xl3sp(k,j)=xl3s(k,j)+al*xn(k)
             enddo
          else
             do k=1,3
-               xl2sp(k,j)=xl2s2(k,j)
+               xl3sp(k,j)=xl3s(k,j)
             enddo
          endif
       enddo
 !     
-!     determine the triangles corresponding to the corner
+!     determine the master faces corresponding to the corner
 !     nodes
 !     
-      ntria=0
+      nmaface=0
       do j=1,8
-         imface(j)=0
+         maface(j)=0
          do k=1,8
-            imfacecorner(j,k)=0
+            mafacecorner(j,k)=0
          enddo
       enddo
 !     
@@ -228,7 +225,7 @@
             xl2sr(j,m)=xl2s(j,m)-2*err*(xl2s(j,m)-pmiddle(j))
          enddo
       enddo
-      distmin=1.1d0
+c      distmin=1.1d0
       do j=1,nopes
          call neartriangle(xl2sr(1,j),xn,xo,yo,zo,x,y,z,nx,ny,nz,
      &        ntri,neigh,kneigh,itietri,ntie,straight,imastop,itri,i)
@@ -237,20 +234,20 @@
          if(itri.eq.0) then  
             cycle
          endif
-         dist=-(straight(13,itri)*xl2sr(1,j)+
-     &        straight(14,itri)*xl2sr(2,j)+
-     &        straight(15,itri)*xl2sr(3,j)+
-     &        straight(16,itri))/
-     &        (straight(13,itri)*xn(1)+
-     &        straight(14,itri)*xn(2)+
-     &        straight(15,itri)*xn(3))
-         if(dist.lt.distmin)distmin=dist
+c         dist=-(straight(13,itri)*xl2sr(1,j)+
+c     &        straight(14,itri)*xl2sr(2,j)+
+c     &        straight(15,itri)*xl2sr(3,j)+
+c     &        straight(16,itri))/
+c     &        (straight(13,itri)*xn(1)+
+c     &        straight(14,itri)*xn(2)+
+c     &        straight(15,itri)*xn(3))
+c         if(dist.lt.distmin)distmin=dist
          ifacem=koncont(4,itri)
 !     
-         call nident(imface,ifacem,ntria,id)
+         call nident(maface,ifacem,nmaface,id)
          if(id.gt.0) then
-            if(imface(id).eq.ifacem) then
-               imfacecorner(j,id)=1
+            if(maface(id).eq.ifacem) then
+               mafacecorner(j,id)=1
                cycle
             endif
          endif
@@ -266,36 +263,35 @@
          if(anglesm.lt.-0.7d0)then
 !     angle between surface normals between 135 and 225 degree
 !     angle between surfaces between 0 and 45 degree
-            ntria=ntria+1
-            do k=ntria,id+2,-1
-               imface(k)=imface(k-1)
+            nmaface=nmaface+1
+            do k=nmaface,id+2,-1
+               maface(k)=maface(k-1)
                do m=1,j-1
-                  imfacecorner(m,k)=imfacecorner(m,k-1)
+                  mafacecorner(m,k)=mafacecorner(m,k-1)
                enddo
             enddo
-            imface(id+1)=ifacem
-            imfacecorner(j,id+1)=1
+            maface(id+1)=ifacem
+            mafacecorner(j,id+1)=1
             do m=1,j-1
-               imfacecorner(m,id+1)=0
+               mafacecorner(m,id+1)=0
             enddo 
          endif              
       enddo
 !     
       nactiveline=0
-      ifreeintersec=0
 !     
 !     treating the corner elements first
 !     
       ncoveredmelem=0
-      do j=1,ntria
-         ifacem=imface(j)
+      do j=1,nmaface
+         ifacem=maface(j)
          nelemm=int(ifacem/10.d0)
          jfacem=ifacem-10*nelemm
 !
 !        add master element to covered stack
 !
          call nident(icoveredmelem,nelemm,ncoveredmelem,id)
-         if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
+         if((id.ne.0).and.(icoveredmelem(id).eq.nelemm)) then
 !     master element was already treated
             cycle
          else
@@ -306,16 +302,16 @@
             enddo
             icoveredmelem(id+1)=nelemm
          endif
-         call faceinfo(nelemm,jfacem,lakon,nopemm,
-     &        nnodelem,idummy)     
+         call faceinfo(nelemm,jfacem,lakon,nopem,
+     &        nopesm,idummy)     
 !     
 !     determining the nodes of the face
 !    
-         do j1=1,nopemm
+         do j1=1,nopem
             konl(j1)=kon(ipkon(nelemm)+j1)
          enddo
-         do k1=1,nnodelem
-            nodel=getnodel(k1,jfacem,nopemm)
+         do k1=1,nopesm
+            nodel=getnodel(k1,jfacem,nopem)
             nodem(k1)=konl(nodel)
             do j1=1,3
                xl2m(j1,k1)=co(j1,konl(nodel))+
@@ -325,251 +321,235 @@
          dd=dsqrt(xn(1)**2+xn(2)**2+xn(3)**2)
 !     
 !     divide master element into konvex subelements
+!
+!     npg: number of polygon nodes     
+!     nodepg: node numbers of polygon nodes
+!     xlpg: coordinates of polygon nodes
 !     
-         if((nnodelem.eq.3).or.(nnodelem.eq.4))then
+         if((nopesm.eq.3).or.(nopesm.eq.4))then
 !     
 !     no loop needed
 !     
-            nmp=nnodelem
-            do k2=1,nnodelem
-               nodem2(k2)=nodem(k2)
+            npg=nopesm
+            do k2=1,nopesm
+               nodepg(k2)=nodem(k2)
                do j2=1,3
-                  xl2m2(j2,k2)=xl2m(j2,k2)
+                  xlpg(j2,k2)=xl2m(j2,k2)
                enddo
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
-         elseif(nnodelem.eq.6)then
+         elseif(nopesm.eq.6)then
 !
-!     tri6 surface is divided into 4 tri3 surfaces
+!     tri6 surface is divided into 4 tri3 polygons
 !     
 !     1. triangle
 !
-            nmp=3
-            nodem2(1)=nodem(1)
-            nodem2(2)=nodem(4)
-            nodem2(3)=nodem(6)
+            npg=3
+            nodepg(1)=nodem(1)
+            nodepg(2)=nodem(4)
+            nodepg(3)=nodem(6)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,1)
+               xlpg(j2,1)=xl2m(j2,1)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,4)
+               xlpg(j2,2)=xl2m(j2,4)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,6)
+               xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     2. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(4)
-            nodem2(2)=nodem(2)
-            nodem2(3)=nodem(5)
+            npg=3
+            nodepg(1)=nodem(4)
+            nodepg(2)=nodem(2)
+            nodepg(3)=nodem(5)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,4)
+               xlpg(j2,1)=xl2m(j2,4)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,2)
+               xlpg(j2,2)=xl2m(j2,2)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,5)
+               xlpg(j2,3)=xl2m(j2,5)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     3. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(5)
-            nodem2(2)=nodem(3)
-            nodem2(3)=nodem(6)
+            npg=3
+            nodepg(1)=nodem(5)
+            nodepg(2)=nodem(3)
+            nodepg(3)=nodem(6)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,5)
+               xlpg(j2,1)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,3)
+               xlpg(j2,2)=xl2m(j2,3)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,6)
+               xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     4. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(4)
-            nodem2(2)=nodem(5)
-            nodem2(3)=nodem(6)
+            npg=3
+            nodepg(1)=nodem(4)
+            nodepg(2)=nodem(5)
+            nodepg(3)=nodem(6)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,4)
+               xlpg(j2,1)=xl2m(j2,4)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,5)
+               xlpg(j2,2)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,6)
+               xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !
-         elseif(nnodelem.eq.8)then
+         elseif(nopesm.eq.8)then
 !     
-!     quad8 surface is divided into 4 tri3 + 1 quad4 surfaces
+!     quad8 surface is divided into 4 tri3 + 1 quad4 polygons
 !     
 !     1. triangle
 !
-            nmp=3
-            nodem2(1)=nodem(1)
-            nodem2(2)=nodem(5)
-            nodem2(3)=nodem(8)
+            npg=3
+            nodepg(1)=nodem(1)
+            nodepg(2)=nodem(5)
+            nodepg(3)=nodem(8)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,1)
+               xlpg(j2,1)=xl2m(j2,1)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,5)
+               xlpg(j2,2)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,8)
+               xlpg(j2,3)=xl2m(j2,8)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     2. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(5)
-            nodem2(2)=nodem(2)
-            nodem2(3)=nodem(6)
+            npg=3
+            nodepg(1)=nodem(5)
+            nodepg(2)=nodem(2)
+            nodepg(3)=nodem(6)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,5)
+               xlpg(j2,1)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,2)
+               xlpg(j2,2)=xl2m(j2,2)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,6)
+               xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     3. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(6)
-            nodem2(2)=nodem(3)
-            nodem2(3)=nodem(7)
+            npg=3
+            nodepg(1)=nodem(6)
+            nodepg(2)=nodem(3)
+            nodepg(3)=nodem(7)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,6)
+               xlpg(j2,1)=xl2m(j2,6)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,3)
+               xlpg(j2,2)=xl2m(j2,3)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,7)
+               xlpg(j2,3)=xl2m(j2,7)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     4. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(7)
-            nodem2(2)=nodem(4)
-            nodem2(3)=nodem(8)
+            npg=3
+            nodepg(1)=nodem(7)
+            nodepg(2)=nodem(4)
+            nodepg(3)=nodem(8)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,7)
+               xlpg(j2,1)=xl2m(j2,7)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,4)
+               xlpg(j2,2)=xl2m(j2,4)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,8)
+               xlpg(j2,3)=xl2m(j2,8)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     quad
 !     
-            nmp=4
-            nodem2(1)=nodem(5)
-            nodem2(2)=nodem(6)
-            nodem2(3)=nodem(7)
-            nodem2(4)=nodem(8)
+            npg=4
+            nodepg(1)=nodem(5)
+            nodepg(2)=nodem(6)
+            nodepg(3)=nodem(7)
+            nodepg(4)=nodem(8)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,5)
+               xlpg(j2,1)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,6)
+               xlpg(j2,2)=xl2m(j2,6)
             enddo
             do j2=1,3
-              xl2m2(j2,3)=xl2m(j2,7)
+              xlpg(j2,3)=xl2m(j2,7)
            enddo
            do j2=1,3
-              xl2m2(j2,4)=xl2m(j2,8)
+              xlpg(j2,4)=xl2m(j2,8)
            enddo
            call treatmasterface(
-     &          nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &          nopes,slavstraight,xn,xl2s,xl3sp,
      &          ipe,ime,iactiveline,nactiveline,
-     &          ifreeintersec,ifacem,
-     &          nintpoint,pslavsurf,
-     &          xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &          areaslav)
+     &          ifacem,nintpoint,pslavsurf,
+     &          xlpg,npg,nodepg,areaslav)
         endif
       enddo
 !     
 !     corners of the Slave surface have already been treated
 !     
       do j=1,nopes
-         imfacecorner(j,1)=0
+         mafacecorner(j,1)=0
       enddo
 !     
 !     retrieving all triangles by neighborhood search
@@ -586,15 +566,15 @@
 !     check whether still in contact tie
 !
          if((itri.gt.itietri(2,i)).or.(itri.lt.itietri(1,i)))then
-            if(itri.ne.0)then
-            endif
+c            if(itri.ne.0)then
+c            endif
             itri=0
          endif                            
          
          if(itri.eq.0) then
             nactiveline=nactiveline-1
             do il=1,nactiveline
-               do k=1,3
+               do k=1,2
                   iactiveline(k,il)=iactiveline(k,il+1)
                enddo
             enddo
@@ -609,13 +589,13 @@
 !     add master element to covered stack
 !     
          call nident(icoveredmelem,nelemm,ncoveredmelem,id)
-         if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
+         if((id.gt.0).and.(icoveredmelem(id).eq.nelemm)) then
 !
 !     master element was already treated
 !
             nactiveline=nactiveline-1
             do il=1,nactiveline
-               do k=1,3
+               do k=1,2
                   iactiveline(k,il)=iactiveline(k,il+1)
                enddo
             enddo
@@ -631,16 +611,16 @@
             icoveredmelem(id+1)=nelemm
          endif 
          indexe=ipkon(nelemm)
-         call faceinfo(nelemm,jfacem,lakon,nopemm,
-     &        nnodelem,idummy)
+         call faceinfo(nelemm,jfacem,lakon,nopem,
+     &        nopesm,idummy)
 !     
 !     determining the nodes of the face
 !     
-         do j1=1,nopemm
+         do j1=1,nopem
             konl(j1)=kon(ipkon(nelemm)+j1)
          enddo
-         do k1=1,nnodelem
-            nodel=getnodel(k1,jfacem,nopemm)
+         do k1=1,nopesm
+            nodel=getnodel(k1,jfacem,nopem)
             nodem(k1)=konl(nodel)
             do j1=1,3
                xl2m(j1,k1)=co(j1,konl(nodel))+
@@ -650,243 +630,223 @@
 !     
 !     divide master element into konvex subelements
 !     
-         if((nnodelem.eq.3).or.(nnodelem.eq.4))then
+         if((nopesm.eq.3).or.(nopesm.eq.4))then
 !     
 !     no loop needed
 !     
-            nmp=nnodelem
-            do k2=1,nnodelem
-               nodem2(k2)=nodem(k2)
+            npg=nopesm
+            do k2=1,nopesm
+               nodepg(k2)=nodem(k2)
                do j2=1,3
-                  xl2m2(j2,k2)=xl2m(j2,k2)
+                  xlpg(j2,k2)=xl2m(j2,k2)
                enddo
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
-         elseif(nnodelem.eq.6)then
+         elseif(nopesm.eq.6)then
 !
-!     tri6 surface is divided into 4 tri3 surfaces
+!     tri6 surface is divided into 4 tri3 polygons
 !     
 !     1. triangle
 !
-            nmp=3
-            nodem2(1)=nodem(1)
-            nodem2(2)=nodem(4)
-            nodem2(3)=nodem(6)
+            npg=3
+            nodepg(1)=nodem(1)
+            nodepg(2)=nodem(4)
+            nodepg(3)=nodem(6)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,1)
+               xlpg(j2,1)=xl2m(j2,1)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,4)
+               xlpg(j2,2)=xl2m(j2,4)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,6)
+               xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     2. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(4)
-            nodem2(2)=nodem(2)
-            nodem2(3)=nodem(5)
+            npg=3
+            nodepg(1)=nodem(4)
+            nodepg(2)=nodem(2)
+            nodepg(3)=nodem(5)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,4)
+               xlpg(j2,1)=xl2m(j2,4)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,2)
+               xlpg(j2,2)=xl2m(j2,2)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,5)
+               xlpg(j2,3)=xl2m(j2,5)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     3. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(5)
-            nodem2(2)=nodem(3)
-            nodem2(3)=nodem(6)
+            npg=3
+            nodepg(1)=nodem(5)
+            nodepg(2)=nodem(3)
+            nodepg(3)=nodem(6)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,5)
+               xlpg(j2,1)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,3)
+               xlpg(j2,2)=xl2m(j2,3)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,6)
+               xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     4. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(4)
-            nodem2(2)=nodem(5)
-            nodem2(3)=nodem(6)
+            npg=3
+            nodepg(1)=nodem(4)
+            nodepg(2)=nodem(5)
+            nodepg(3)=nodem(6)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,4)
+               xlpg(j2,1)=xl2m(j2,4)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,5)
+               xlpg(j2,2)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,6)
+               xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !
-         elseif(nnodelem.eq.8)then
+         elseif(nopesm.eq.8)then
 !     
-!     quad8 surface is divided into 4 tri3 + 1 quad4 surfaces
+!     quad8 surface is divided into 4 tri3 + 1 quad4 polygons
 !     
 !     1. triangle
 !
-            nmp=3
-            nodem2(1)=nodem(1)
-            nodem2(2)=nodem(5)
-            nodem2(3)=nodem(8)
+            npg=3
+            nodepg(1)=nodem(1)
+            nodepg(2)=nodem(5)
+            nodepg(3)=nodem(8)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,1)
+               xlpg(j2,1)=xl2m(j2,1)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,5)
+               xlpg(j2,2)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,8)
+               xlpg(j2,3)=xl2m(j2,8)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     2. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(5)
-            nodem2(2)=nodem(2)
-            nodem2(3)=nodem(6)
+            npg=3
+            nodepg(1)=nodem(5)
+            nodepg(2)=nodem(2)
+            nodepg(3)=nodem(6)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,5)
+               xlpg(j2,1)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,2)
+               xlpg(j2,2)=xl2m(j2,2)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,6)
+               xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     3. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(6)
-            nodem2(2)=nodem(3)
-            nodem2(3)=nodem(7)
+            npg=3
+            nodepg(1)=nodem(6)
+            nodepg(2)=nodem(3)
+            nodepg(3)=nodem(7)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,6)
+               xlpg(j2,1)=xl2m(j2,6)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,3)
+               xlpg(j2,2)=xl2m(j2,3)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,7)
+               xlpg(j2,3)=xl2m(j2,7)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     4. triangle
 !     
-            nmp=3
-            nodem2(1)=nodem(7)
-            nodem2(2)=nodem(4)
-            nodem2(3)=nodem(8)
+            npg=3
+            nodepg(1)=nodem(7)
+            nodepg(2)=nodem(4)
+            nodepg(3)=nodem(8)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,7)
+               xlpg(j2,1)=xl2m(j2,7)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,4)
+               xlpg(j2,2)=xl2m(j2,4)
             enddo
             do j2=1,3
-               xl2m2(j2,3)=xl2m(j2,8)
+               xlpg(j2,3)=xl2m(j2,8)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &           nopes,slavstraight,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
-     &           ifreeintersec,ifacem,
-     &           nintpoint,pslavsurf,
-     &           xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &           areaslav)
+     &           ifacem,nintpoint,pslavsurf,
+     &           xlpg,npg,nodepg,areaslav)
 !     
 !     quad
 !     
-            nmp=4
-            nodem2(1)=nodem(5)
-            nodem2(2)=nodem(6)
-            nodem2(3)=nodem(7)
-            nodem2(4)=nodem(8)
+            npg=4
+            nodepg(1)=nodem(5)
+            nodepg(2)=nodem(6)
+            nodepg(3)=nodem(7)
+            nodepg(4)=nodem(8)
             do j2=1,3
-               xl2m2(j2,1)=xl2m(j2,5)
+               xlpg(j2,1)=xl2m(j2,5)
             enddo
             do j2=1,3
-               xl2m2(j2,2)=xl2m(j2,6)
+               xlpg(j2,2)=xl2m(j2,6)
             enddo
             do j2=1,3
-              xl2m2(j2,3)=xl2m(j2,7)
+              xlpg(j2,3)=xl2m(j2,7)
            enddo
            do j2=1,3
-              xl2m2(j2,4)=xl2m(j2,8)
+              xlpg(j2,4)=xl2m(j2,8)
            enddo
            call treatmasterface(
-     &          nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &          nopes,slavstraight,xn,xl2s,xl3sp,
      &          ipe,ime,iactiveline,nactiveline,
-     &          ifreeintersec,ifacem,
-     &          nintpoint,pslavsurf,
-     &          xl2m,nnodelem,xl2m2,nmp,nodem2,
-     &          areaslav)
+     &          ifacem,nintpoint,pslavsurf,
+     &          xlpg,npg,nodepg,areaslav)
         endif
       enddo
       islavsurf(2,l+1)=nintpoint
