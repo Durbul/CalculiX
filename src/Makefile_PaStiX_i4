@@ -1,8 +1,8 @@
 # https://calculix.discourse.group/t/building-calculix-with-pastix-on-freebsd-without-cuda/2228
 
 PASTIX_DIR=../../PaStiX4CalculiX/build
-SCOTCH_DIR=/opt/homebrew/Cellar/scotch/7.0.9
-HWLOC_DIR=/opt/homebrew/Cellar/hwloc/2.12.2
+SCOTCH_DIR=/opt/homebrew/Cellar/scotch/7.0.10
+HWLOC_DIR=/opt/homebrew/Cellar/hwloc/2.12.2_1
 BLAS_DIR=/opt/homebrew/Cellar/openblas/0.3.29
 LAPACK_DIR=/opt/homebrew/Cellar/lapack/3.12.1
 
@@ -22,7 +22,7 @@ LIBS = \
   -lstdc++ \
   -framework Accelerate
 
-CFLAGS = -Wall -O3 -I $(INCLUDES) -DARCH="Linux" -DPASTIX -DARPACK -DMATRIXSTORAGE -DNETWORKOUT -Wno-error=implicit-function-declaration -Wno-error=int-conversion \
+CFLAGS = -Wall -O3 -I $(INCLUDES) -DARCH="Linux" -DPASTIX -DARPACK -DMATRIXSTORAGE -DNETWORKOUT \
   -I$(PASTIX_DIR)/include \
   -I$(SCOTCH_DIR)/include \
   -I$(HWLOC_DIR)/include \
