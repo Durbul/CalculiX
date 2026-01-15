@@ -37,16 +37,16 @@
      &     j,k,l,ii,itri,nx(*),ny(*),nz(*),nelemm,jfacem,
      &     indexe,nopesm,nope,islavsurf(2,*),ifaces,nelems,jfaces,mi(*),
      &     m,nopes,konl(20),id,maface(8),nmaface,
-     &     mafacecorner(8,8),line,iactiveline(2,3*ncont),
-     &     icoveredmelem(3*ncont),nactiveline,ipe(*),ime(4,*),k1,j1,
-     &     ncoveredmelem,ntri,nintpfirst,nodem(8),nodepg(8),
+     &     line,iactiveline(2,3*ncont),
+     &     icovered(3*ncont),nactiveline,ipe(*),ime(4,*),k1,j1,
+     &     ncovered,ntri,nintpfirst,nodem(8),nodepg(8),
      &     il,nodel,getnodel,ifacem,idummy,nopem,npg,k2,j2
 !     
-      real*8 straight(16,*),co(3,*),vold(0:mi(2),*),
-     &     xo(*),yo(*),zo(*),x(*),y(*),z(*),
+      real*8 straight(16,*),co(3,*),vold(0:mi(2),*),p12(3),p23(3),
+     &     xo(*),yo(*),zo(*),x(*),y(*),z(*),p31(3),
      &     xl2m(3,8),xl2s(3,8),xlpg(3,8),
      &     pmiddle(3),xl2sr(3,8),xl3sp(3,8),xl3s(3,8),
-     &     dd,areaslav,al,xn(3),slavstraight(36),
+     &     dd,areaslav,al,xn(4),
      &     pslavsurf(3,*),err,xquad(2,8),
      &     xtri(2,6),xi,et,xsj2(3),xs2(3,2),shp2(7,8),anglesm
 !
@@ -73,8 +73,6 @@
       areaslav=0.d0
       nintpfirst=nintpoint
       islavsurf(2,l)=nintpoint
-!     
-!     Research of the contact integration points
 !     
       ifaces=islavsurf(1,l)
       nelems=int(ifaces/10)
@@ -104,22 +102,6 @@
      &           vold(j,konl(nodel))     
          enddo
       enddo  
-!     
-!     slightly reducing the size of the slave surface in
-!     an aleatoric way
-!     
-      do j=1,3
-         pmiddle(j)=0.d0
-         do m=1,nopes
-            pmiddle(j)=pmiddle(j)+xl2s(j,m)
-         enddo
-         pmiddle(j)=pmiddle(j)/nopes
-      enddo
-c      do j=1,3
-c         do m=1,nopes
-c            xl2sr(j,m)=xl2s(j,m)-0.5d0*err*(xl2s(j,m)-pmiddle(j))
-c         enddo
-c      enddo
 !
 !     sort vertices for quadratic elements in ccw direction
 !     
@@ -138,6 +120,16 @@ c      enddo
          enddo
       endif
 !     
+!     calculating a middle point in the face
+!     
+      do j=1,3
+         pmiddle(j)=0.d0
+         do m=1,nopes
+            pmiddle(j)=pmiddle(j)+xl2s(j,m)
+         enddo
+         pmiddle(j)=pmiddle(j)/nopes
+      enddo
+!     
 !     calculate the mean normal vector xn on the slave face
 !     +
 !     determine the equations of the slave face
@@ -145,10 +137,23 @@ c      enddo
 !     piecewise linear approximation 
 !     
       if(nopes.eq.3) then
-         call straighteq3d(xl3s,slavstraight)
-         do k=1,3
-            xn(k)=slavstraight(4*nopes+k)
-         enddo               
+        do i=1,3
+          p12(i)=xl3s(i,2)-xl3s(i,1)
+          p23(i)=xl3s(i,3)-xl3s(i,2)
+          p31(i)=xl3s(i,1)-xl3s(i,3)
+        enddo
+!     
+!     normalized vector normal to the triangle: xn = p12 x p23
+!     
+        xn(1)=p12(2)*p23(3)-p12(3)*p23(2)
+        xn(2)=p12(3)*p23(1)-p12(1)*p23(3)
+        xn(3)=p12(1)*p23(2)-p12(2)*p23(1)
+        dd=dsqrt(xn(1)*xn(1)+xn(2)*xn(2)+xn(3)*xn(3))
+        do i=1,3
+          xn(i)=xn(i)/dd
+        enddo
+        xn(4)=-xn(1)*xl3s(1,1)-xn(2)*xl3s(2,1)-
+     &       xn(3)*xl3s(3,1)
       else
          do k=1,3
             xn(k)=0.d0
@@ -189,15 +194,14 @@ c      enddo
          do k=1,3
             xn(k)=xn(k)/dd
          enddo           
-         call approxplane(xl3s,slavstraight,xn,nopes)
+         xn(4)=-xn(1)*pmiddle(1)-xn(2)*pmiddle(2)-xn(3)*pmiddle(3)
       endif
 !     
 !     Project slave nodes to meanplane, needed for Sutherland-Hodgman
 !     
       do j=1,nopes
          al=-xn(1)*xl3s(1,j)-xn(2)*
-     &        xl3s(2,j)-xn(3)*xl3s(3,j)-
-     &        slavstraight(nopes*4+4)
+     &        xl3s(2,j)-xn(3)*xl3s(3,j)-xn(4)
          if(nopes.ne.3)then
             do k=1,3
                xl3sp(k,j)=xl3s(k,j)+al*xn(k)
@@ -215,17 +219,15 @@ c      enddo
       nmaface=0
       do j=1,8
          maface(j)=0
-         do k=1,8
-            mafacecorner(j,k)=0
-         enddo
       enddo
+!     
+!     moving the nodes towards the middle     
 !     
       do j=1,3
          do m=1,nopes
             xl2sr(j,m)=xl2s(j,m)-2*err*(xl2s(j,m)-pmiddle(j))
          enddo
       enddo
-c      distmin=1.1d0
       do j=1,nopes
          call neartriangle(xl2sr(1,j),xn,xo,yo,zo,x,y,z,nx,ny,nz,
      &        ntri,neigh,kneigh,itietri,ntie,straight,imastop,itri,i)
@@ -234,20 +236,11 @@ c      distmin=1.1d0
          if(itri.eq.0) then  
             cycle
          endif
-c         dist=-(straight(13,itri)*xl2sr(1,j)+
-c     &        straight(14,itri)*xl2sr(2,j)+
-c     &        straight(15,itri)*xl2sr(3,j)+
-c     &        straight(16,itri))/
-c     &        (straight(13,itri)*xn(1)+
-c     &        straight(14,itri)*xn(2)+
-c     &        straight(15,itri)*xn(3))
-c         if(dist.lt.distmin)distmin=dist
          ifacem=koncont(4,itri)
 !     
          call nident(maface,ifacem,nmaface,id)
          if(id.gt.0) then
             if(maface(id).eq.ifacem) then
-               mafacecorner(j,id)=1
                cycle
             endif
          endif
@@ -266,15 +259,8 @@ c         if(dist.lt.distmin)distmin=dist
             nmaface=nmaface+1
             do k=nmaface,id+2,-1
                maface(k)=maface(k-1)
-               do m=1,j-1
-                  mafacecorner(m,k)=mafacecorner(m,k-1)
-               enddo
             enddo
             maface(id+1)=ifacem
-            mafacecorner(j,id+1)=1
-            do m=1,j-1
-               mafacecorner(m,id+1)=0
-            enddo 
          endif              
       enddo
 !     
@@ -282,7 +268,7 @@ c         if(dist.lt.distmin)distmin=dist
 !     
 !     treating the corner elements first
 !     
-      ncoveredmelem=0
+      ncovered=0
       do j=1,nmaface
          ifacem=maface(j)
          nelemm=int(ifacem/10.d0)
@@ -290,17 +276,21 @@ c         if(dist.lt.distmin)distmin=dist
 !
 !        add master element to covered stack
 !
-         call nident(icoveredmelem,nelemm,ncoveredmelem,id)
-         if((id.ne.0).and.(icoveredmelem(id).eq.nelemm)) then
+         call nident(icovered,ifacem,ncovered,id)
+         if((id.ne.0).and.(icovered(id).eq.ifacem)) then
+!
 !     master element was already treated
+!
             cycle
          else
+!
 !     add master element to covered elements
-            ncoveredmelem=ncoveredmelem+1
-            do ii=ncoveredmelem,id+2,-1
-               icoveredmelem(ii)=icoveredmelem(ii-1)
+!
+            ncovered=ncovered+1
+            do ii=ncovered,id+2,-1
+               icovered(ii)=icovered(ii-1)
             enddo
-            icoveredmelem(id+1)=nelemm
+            icovered(id+1)=ifacem
          endif
          call faceinfo(nelemm,jfacem,lakon,nopem,
      &        nopesm,idummy)     
@@ -318,7 +308,6 @@ c         if(dist.lt.distmin)distmin=dist
      &              vold(j1,konl(nodel))
             enddo
          enddo 
-         dd=dsqrt(xn(1)**2+xn(2)**2+xn(3)**2)
 !     
 !     divide master element into konvex subelements
 !
@@ -338,7 +327,7 @@ c         if(dist.lt.distmin)distmin=dist
                enddo
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -363,7 +352,7 @@ c         if(dist.lt.distmin)distmin=dist
                xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -384,7 +373,7 @@ c         if(dist.lt.distmin)distmin=dist
                xlpg(j2,3)=xl2m(j2,5)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -405,7 +394,7 @@ c         if(dist.lt.distmin)distmin=dist
                xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -426,7 +415,7 @@ c         if(dist.lt.distmin)distmin=dist
                xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -451,7 +440,7 @@ c         if(dist.lt.distmin)distmin=dist
                xlpg(j2,3)=xl2m(j2,8)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -472,7 +461,7 @@ c         if(dist.lt.distmin)distmin=dist
                xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -493,7 +482,7 @@ c         if(dist.lt.distmin)distmin=dist
                xlpg(j2,3)=xl2m(j2,7)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -514,7 +503,7 @@ c         if(dist.lt.distmin)distmin=dist
                xlpg(j2,3)=xl2m(j2,8)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -539,17 +528,11 @@ c         if(dist.lt.distmin)distmin=dist
               xlpg(j2,4)=xl2m(j2,8)
            enddo
            call treatmasterface(
-     &          nopes,slavstraight,xn,xl2s,xl3sp,
+     &          nopes,xn,xl2s,xl3sp,
      &          ipe,ime,iactiveline,nactiveline,
      &          ifacem,nintpoint,pslavsurf,
      &          xlpg,npg,nodepg,areaslav)
         endif
-      enddo
-!     
-!     corners of the Slave surface have already been treated
-!     
-      do j=1,nopes
-         mafacecorner(j,1)=0
       enddo
 !     
 !     retrieving all triangles by neighborhood search
@@ -566,8 +549,6 @@ c         if(dist.lt.distmin)distmin=dist
 !     check whether still in contact tie
 !
          if((itri.gt.itietri(2,i)).or.(itri.lt.itietri(1,i)))then
-c            if(itri.ne.0)then
-c            endif
             itri=0
          endif                            
          
@@ -580,7 +561,6 @@ c            endif
             enddo
             cycle
          endif
-         
 !     
          ifacem=koncont(4,itri)
          nelemm=int(koncont(4,itri)/10.d0)
@@ -588,8 +568,8 @@ c            endif
 !     
 !     add master element to covered stack
 !     
-         call nident(icoveredmelem,nelemm,ncoveredmelem,id)
-         if((id.gt.0).and.(icoveredmelem(id).eq.nelemm)) then
+         call nident(icovered,ifacem,ncovered,id)
+         if((id.gt.0).and.(icovered(id).eq.ifacem)) then
 !
 !     master element was already treated
 !
@@ -604,11 +584,11 @@ c            endif
 !
 !     add master element to covered elements
 !
-            ncoveredmelem=ncoveredmelem+1
-            do ii=ncoveredmelem,id+2,-1
-               icoveredmelem(ii)=icoveredmelem(ii-1)
+            ncovered=ncovered+1
+            do ii=ncovered,id+2,-1
+               icovered(ii)=icovered(ii-1)
             enddo
-            icoveredmelem(id+1)=nelemm
+            icovered(id+1)=ifacem
          endif 
          indexe=ipkon(nelemm)
          call faceinfo(nelemm,jfacem,lakon,nopem,
@@ -642,7 +622,7 @@ c            endif
                enddo
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -667,7 +647,7 @@ c            endif
                xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -688,7 +668,7 @@ c            endif
                xlpg(j2,3)=xl2m(j2,5)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -709,7 +689,7 @@ c            endif
                xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -730,7 +710,7 @@ c            endif
                xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -755,7 +735,7 @@ c            endif
                xlpg(j2,3)=xl2m(j2,8)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -776,7 +756,7 @@ c            endif
                xlpg(j2,3)=xl2m(j2,6)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -797,7 +777,7 @@ c            endif
                xlpg(j2,3)=xl2m(j2,7)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -818,7 +798,7 @@ c            endif
                xlpg(j2,3)=xl2m(j2,8)
             enddo
             call treatmasterface(
-     &           nopes,slavstraight,xn,xl2s,xl3sp,
+     &           nopes,xn,xl2s,xl3sp,
      &           ipe,ime,iactiveline,nactiveline,
      &           ifacem,nintpoint,pslavsurf,
      &           xlpg,npg,nodepg,areaslav)
@@ -843,7 +823,7 @@ c            endif
               xlpg(j2,4)=xl2m(j2,8)
            enddo
            call treatmasterface(
-     &          nopes,slavstraight,xn,xl2s,xl3sp,
+     &          nopes,xn,xl2s,xl3sp,
      &          ipe,ime,iactiveline,nactiveline,
      &          ifacem,nintpoint,pslavsurf,
      &          xlpg,npg,nodepg,areaslav)

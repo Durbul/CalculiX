@@ -47,7 +47,7 @@ int main(int argc,char *argv[])
     kind1[2],kind2[2],*heading=NULL,*objectset=NULL;
   
   ITG *kon=NULL,*nodeboun=NULL,*ndirboun=NULL,*ipompc=NULL,
-    *nodempc=NULL,*nodeforc=NULL,*ndirforc=NULL,
+    *nodempc=NULL,*nodeforc=NULL,*ndirforc=NULL,interfaceload,
     *nelemload=NULL,im,*inodesd=NULL,nload1,*idefforc=NULL,
     *nactdof=NULL,*icol=NULL,*ics=NULL,itempuser[3],
     *jq=NULL,*mast1=NULL,*irow=NULL,*rig=NULL,*idefbody=NULL,
@@ -62,7 +62,7 @@ int main(int argc,char *argv[])
     *ncocon=NULL,*ibody=NULL,*ielprop=NULL,*islavsurf=NULL,
     *ipoinpc=NULL,mt,nxstate,nload0,iload,*iuel=NULL,*ne2boun=NULL,
     *irandomtype=NULL,irobustdesign[3],*iparentel=NULL,ifreebody,
-    *ipobody=NULL,inewton=0,*iprfn=NULL,*konrfn=NULL;
+    *ipobody=NULL,inewton=0,*iprfn=NULL,*konrfn=NULL,*imastload=NULL;
      
   ITG nk,ne,nboun,nmpc,nforc,nload,nprint,nset,nalset,nentries=19,
     nmethod,neq[3],i,mpcfree,mei[4]={0,0,0,0},j,nzl,nam,nbounold,
@@ -71,7 +71,7 @@ int main(int argc,char *argv[])
     iperturb[2],nmat,ntmat_,norien,ithermal[2]={0,0},nmpcold,
     iprestr,kode,isolver,nslavs,nkon_,ne1,nkon0,mortar,ndmat_,
     jout[2],nlabel,nkon,idrct,jmax[2],iexpl,nevtot,ifacecount,
-    iplas,npmat_,mi[3],ntrans,mpcend,namtot_,iheading,
+    iplas,npmat_,mi[3],ntrans,mpcend,namtot_,iheading,ishift,
     icascade,maxlenmpc,mpcinfo[4],ne1d,ne2d,infree[4],
     callfrommain,nflow,jin=0,irstrt[2],nener,jrstrt,nenerold,
     nline,*ipoinp=NULL,*inp=NULL,ntie,ntie_,mcs,nprop_,
@@ -98,7 +98,8 @@ int main(int argc,char *argv[])
     *cs=NULL,*tietol=NULL,*fmpc=NULL,*prop=NULL,*t0g=NULL,*t1g=NULL,
     *xbody=NULL,*xbodyold=NULL,*coefmpcref=NULL,*dacon=NULL,*vel=NULL,
     *velo=NULL,*veloo=NULL,energy[5],*ratiorfn=NULL,*dgdxglob=NULL,
-    *g0=NULL,*xdesi=NULL,*coeffc=NULL,*edc=NULL,*coini=NULL,*dam=NULL;
+    *g0=NULL,*xdesi=NULL,*coeffc=NULL,*edc=NULL,*coini=NULL,*dam=NULL,
+    *pmastload=NULL;
     
   double ctrl[60];
 
@@ -158,7 +159,7 @@ int main(int argc,char *argv[])
   printf("software, and you are welcome to redistribute it under\n");
   printf("certain conditions, see gpl.htm\n\n");
   printf("************************************************************\n\n");
-  printf("You are using an executable made on Tue Dec  9 19:31:12 CET 2025\n");
+  printf("You are using an executable made on Thu Jan 15 18:36:36 CET 2026\n");
   fflush(stdout);
 
   NNEW(ipoinp,ITG,2*nentries);
@@ -189,7 +190,7 @@ int main(int argc,char *argv[])
 	  &ntrans_,&ncs_,&nstate_,&ncmat_,&memmpc_,&nprint_,energy,ctrl,alpha,
 	  qaold,physcon,&istep,&istat,&iprestr,&kode,&nload,&nbody,&nforc,
 	  &nboun,&nk,&nmpc,&nam,&nzs_,&nlabel,&ttime,&iheading,&nfc,&nfc_,&ndc,
-	  &ndc_,&ndmat_);
+	  &ndc_,&ndmat_,&interfaceload);
   
   NNEW(set,char,81*nset_);
   NNEW(meminset,ITG,nset_);
@@ -645,7 +646,7 @@ int main(int argc,char *argv[])
 		      dacon,vel,&nef,velo,veloo,ne2boun,itempuser,
 		      irobustdesign,irandomtype,randomval,&nfc,&nfc_,coeffc,
 		      ikdc,&ndc,&ndc_,edc,coini,&ndmat_,ndmcon,dmcon,dam,
-		      &irefineloop));
+		      &irefineloop,&interfaceload));
     
     SFREE(idefforc);SFREE(idefload);SFREE(idefbody);
 
@@ -1063,7 +1064,16 @@ int main(int argc,char *argv[])
       RENEW(iamboun,ITG,nboun);
     }
 
-    /* generate force convection elements */
+    /* check for interfaceloading */
+
+    if(interfaceload>0){
+      interfaceloading(&ne,ipkon,kon,lakon,&nk,&set,&istartset,&iendset,&ialset,
+		       &nset,&nalset,co,vold,mi,cs,&mcs,ics,&nelemload,
+		       &sideload,&xload,&xloadold,&iamload,&nam,&nload,
+		       &nload_,&imastload,&pmastload,&interfaceload);
+    }
+    
+    /* generate forced convection elements */
 
     if(network>0){
       ne1=ne;nkon0=nkon;nload1=nload;
@@ -1264,7 +1274,7 @@ int main(int argc,char *argv[])
 		    &nbody,
 		    xbodyold,timepar,thicke,jobnamec,tieset,&ntie,&istep,&nmat,
 		    ielprop,prop,typeboun,&mortar,mpcinfo,tietol,ics,
-		    orname,itempuser,t0g,t1g,jmax);
+		    orname,itempuser,t0g,t1g,jmax,imastload,pmastload);
 
 	  for(i=0;i<3;i++){nzsprevstep[i]=nzs[i];}
 
@@ -1299,7 +1309,7 @@ int main(int argc,char *argv[])
 		    &pslavsurf,&clearini,&nmat,xmodal,&iaxial,&inext,&nprop,
 		    &network,orname,vel,&nef,velo,veloo,energy,itempuser,
 		    ipobody,&inewton,t0g,t1g,&ifreebody,&nlabel,&ndmat_,ndmcon,
-		    dmcon,dam);
+		    dmcon,dam,imastload,pmastload);
 
 	  memmpc_=mpcinfo[0];mpcfree=mpcinfo[1];icascade=mpcinfo[2];
 	  maxlenmpc=mpcinfo[3];
@@ -1333,7 +1343,7 @@ int main(int argc,char *argv[])
 	       ibody,xbody,&nbody,thicke,&nslavs,tietol,&nkon,mpcinfo,
 	       &ntie,&istep,&mcs,ics,tieset,cs,&nintpoint,&mortar,&ifacecount,
 	       &islavsurf,&pslavsurf,&clearini,&nmat,typeboun,ielprop,prop,
-	       orname,&inewton,t0g,t1g,alpha);
+	       orname,&inewton,t0g,t1g,alpha,imastload,pmastload);
 
 	memmpc_=mpcinfo[0];mpcfree=mpcinfo[1];icascade=mpcinfo[2];
 	maxlenmpc=mpcinfo[3];
@@ -1369,7 +1379,7 @@ int main(int argc,char *argv[])
 		 ibody,xbody,&nbody,&nevtot,thicke,&nslavs,tietol,mpcinfo,
 		 &ntie,&istep,tieset,&nintpoint,&mortar,&ifacecount,&islavsurf,
 		 &pslavsurf,&clearini,&nmat,typeboun,ielprop,prop,orname,
-		 &inewton,t0g,t1g,alpha);
+		 &inewton,t0g,t1g,alpha,imastload,pmastload);
 
 	memmpc_=mpcinfo[0];mpcfree=mpcinfo[1];icascade=mpcinfo[2];
 	maxlenmpc=mpcinfo[3];
@@ -1399,7 +1409,7 @@ int main(int argc,char *argv[])
 	       set,&nset,istartset,iendset,ialset,&nprint,prlab,
 	       prset,&nener,&isolver,trab,inotr,&ntrans,&ttime,fmpc,ipobody,
 	       ibody,xbody,&nbody,thicke,jobnamec,&nmat,ielprop,prop,
-	       orname,typeboun,t0g,t1g,&mcs,&istep);
+	       orname,typeboun,t0g,t1g,&mcs,&istep,imastload,pmastload);
 #else
       printf(" *ERROR in CalculiX: the ARPACK library is not linked\n\n");
       FORTRAN(stop,());
@@ -1435,7 +1445,7 @@ int main(int argc,char *argv[])
 	     xbodyold,&istep,&isolver,jq,output,&mcs,&nkon,&mpcend,ics,cs,
 	     &ntie,tieset,&idrct,jmax,ctrl,&itpamp,tietol,&nalset,
 	     ikforc,ilforc,thicke,&nslavs,&nmat,typeboun,ielprop,prop,orname,
-	     t0g,t1g);
+	     t0g,t1g,imastload,pmastload);
       }
     else if(nmethod==5)
       {
@@ -1472,7 +1482,7 @@ int main(int argc,char *argv[])
 		    &mpcend,
 		    ctrl,ikforc,ilforc,thicke,&nmat,typeboun,ielprop,prop,
 		    orname,
-		    &ndamp,dacon,t0g,t1g);
+		    &ndamp,dacon,t0g,t1g,imastload,pmastload);
       }
     else if((nmethod==6)||(nmethod==7))
       {
@@ -1534,7 +1544,7 @@ int main(int argc,char *argv[])
 		       &ntie,&tieset,&itpamp,&iviewfile,jobnamec,&tietol,
 		       &nslavs,thicke,
 		       ics,&nalset,&nmpc_,&nmat,typeboun,&iaxial,&nload_,&nprop,
-		       &network,orname,t0g,t1g);
+		       &network,orname,t0g,t1g,imastload,pmastload);
 
       memmpc_=mpcinfo[0];mpcfree=mpcinfo[1];icascade=mpcinfo[2];
       maxlenmpc=mpcinfo[3];
@@ -1703,7 +1713,7 @@ int main(int argc,char *argv[])
 		&ncs_,&nstate_,&ncmat_,&memmpc_,&nprint_,energy,ctrl,alpha,
 		qaold,physcon,&istep,&istat,&iprestr,&kode,&nload,&nbody,&nforc,
 		&nboun,&nk,&nmpc,&nam,&nzs_,&nlabel,&ttime,&iheading,&nfc,
-		&nfc_,&ndc,&ndc_,&ndmat_);
+		&nfc_,&ndc,&ndc_,&ndmat_,&interfaceload);
   
 	NNEW(set,char,81*nset_);
 	NNEW(meminset,ITG,nset_);
@@ -1795,7 +1805,7 @@ int main(int argc,char *argv[])
       }
     }
 
-    /* removing the advective elements, if any */
+    /* removing the force convection elements, if any */
 
     if(network>0){
       RENEW(ipkon,ITG,ne1);
@@ -1828,16 +1838,43 @@ int main(int argc,char *argv[])
 
       /* reactivating the original load labels */
 
-      for(i=nload-1;i>=nload0;i--){
+      //      for(i=nload-1;i>=nload0;i--){
+      for(i=nload-1;i>=nload1;i--){
 	if(strcmp2(&sideload[20*i],"                    ",20)==0){
 	  iload=nelemload[2*i+1];
 	  strcpy1(&sideload[20*(iload-1)],"F",1);
 	}
       }
-      ne=ne1;nkon=nkon0;
+      ne=ne1;nkon=nkon0;nload=nload1;
 
     }
 
+    /* deactivating the interface loading */
+
+    if(interfaceload>0){
+      ishift=0;
+      //      for(i=0;i<nload1;i++){
+      for(i=0;i<nload;i++){
+	if(strcmp1(&sideload[20*i],"I")==0){
+	  if(ipkon[nelemload[2*i]-1]>=0){
+	    ishift++;
+	    continue;
+	  }
+	}
+	nelemload[2*(i-ishift)]=nelemload[2*i];
+	nelemload[2*(i-ishift)+1]=nelemload[2*i+1];
+	strcpy1(&sideload[20*(i-ishift)],&sideload[20*i],20);
+	xload[2*(i-ishift)]=xload[2*i];
+	xload[2*(i-ishift)+1]=xload[2*i+1];
+	xloadold[2*(i-ishift)]=xloadold[2*i];
+	xloadold[2*(i-ishift)+1]=xloadold[2*i+1];
+	if(nam>0){
+	  iamload[2*(i-ishift)]=iamload[2*i];
+	  iamload[2*(i-ishift)+1]=iamload[2*i+1];
+	}
+      }
+    }
+    
     nload=nload0;
 
     if((nmethod==4)&&(iperturb[0]>1)) SFREE(accold);

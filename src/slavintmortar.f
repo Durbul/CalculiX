@@ -52,11 +52,11 @@
      &     ntri,nintpfirst,nodem(8),nodem2(8),ithree,
      &     il,ifac,getlocno,ifacem,idummy,nopemm,nmp,k2,j2
 !     
-      real*8 straight(16,*),co(3,*),vold(0:mi(2),*),
-     &     xo(*),yo(*),zo(*),x(*),y(*),z(*),
+      real*8 straight(16,*),co(3,*),vold(0:mi(2),*),p12(3),p23(3),
+     &     xo(*),yo(*),zo(*),x(*),y(*),z(*),p31(3),
      &     pmastsurf(2,*),xl2m(3,8),xl2s(3,8),xl2m2(3,8),
-     &     pmiddle(3),xl2sr(3,8),xl2sp(3,8),xl2s2(3,8),
-     &     dd,xns(3,8),areaslav,al,xn(3),gapmints(*),slavstraight(36),
+     &     pmiddle(3),xl2sr(3,8),xl3sp(3,8),xl3s(3,8),
+     &     dd,xns(3,8),areaslav,al,xn(4),gapmints(*),
      &     dist,distmin,tietol(4,*),clearance,reltime,
      &     pslavsurf(3,*),err,xquad(2,8),cl2s(3,8),cl2m(3,8),
      &     xtri(2,6),xi,et,xsj2(3),xs2(3,7),shp2(7,8),anglesm
@@ -144,19 +144,19 @@
 !     e.g. instead of 1-5-2-6-3-7-4-8 in ccw-direction
 !     1-2-3-4-5-6-7-8
 !
-!     re-sorted deformed coordinates: xl2s2      
+!     re-sorted deformed coordinates: xl3s      
 !     
-      if(nopes.eq.3 .or. nopes.eq.4)then
+      if((nopes.eq.3).or.(nopes.eq.4)) then
         do j=1,nopes
           do k=1,3
-            xl2s2(k,j)=xl2s(k,j)
+            xl3s(k,j)=xl2s(k,j)
           enddo
         enddo
       else
         do j=1,int(nopes/2.0)
           do k=1,3
-            xl2s2(k,2*j-1)=xl2s(k,j)
-            xl2s2(k,2*j)=xl2s(k,(int(nopes/2.0))+j)           
+            xl3s(k,2*j-1)=xl2s(k,j)
+            xl3s(k,2*j)=xl2s(k,(int(nopes/2.0))+j)           
           enddo
         enddo
       endif
@@ -168,10 +168,23 @@
 !     triangle/quadrilateral
 !     
       if(nopes.eq.3) then
-        call straighteq3d(xl2s2,slavstraight)
-        do k=1,3
-          xn(k)=slavstraight(4*nopes+k)
-        enddo               
+        do i=1,3
+          p12(i)=xl3s(i,2)-xl3s(i,1)
+          p23(i)=xl3s(i,3)-xl3s(i,2)
+          p31(i)=xl3s(i,1)-xl3s(i,3)
+        enddo
+!     
+!     normalized vector normal to the triangle: xn = p12 x p23
+!     
+        xn(1)=p12(2)*p23(3)-p12(3)*p23(2)
+        xn(2)=p12(3)*p23(1)-p12(1)*p23(3)
+        xn(3)=p12(1)*p23(2)-p12(2)*p23(1)
+        dd=dsqrt(xn(1)*xn(1)+xn(2)*xn(2)+xn(3)*xn(3))
+        do i=1,3
+          xn(i)=xn(i)/dd
+        enddo
+        xn(4)=-xn(1)*xl3s(1,1)-xn(2)*xl3s(2,1)-
+     &       xn(3)*xl3s(3,1)
       else
         do k=1,3
           xn(k)=0.d0
@@ -201,8 +214,7 @@
           xsj2(3)=xsj2(3)/dd
 !     
           do k=1,3
-            xn(k)=xn(k)
-     &           +xsj2(k)
+            xn(k)=xn(k)+xsj2(k)
           enddo
         enddo 
 !     
@@ -212,24 +224,23 @@
         do k=1,3
           xn(k)=xn(k)/dd
         enddo           
-        call approxplane(xl2s2,slavstraight,xn,nopes)
+         xn(4)=-xn(1)*pmiddle(1)-xn(2)*pmiddle(2)-xn(3)*pmiddle(3)
       endif
 !     
 !     Project slave nodes to meanplane, needed for Sutherland-Hodgman
 !
-!     projected re-sorted deformed coordinates in xl2sp
+!     projected re-sorted deformed coordinates in xl3sp
 !
       do j=1,nopes
-        al=-xn(1)*xl2s2(1,j)-xn(2)*
-     &       xl2s2(2,j)-xn(3)*xl2s2(3,j)-
-     &       slavstraight(nopes*4+4)
+        al=-xn(1)*xl3s(1,j)-xn(2)*
+     &       xl3s(2,j)-xn(3)*xl3s(3,j)-xn(4)
         if(nopes.eq.3)then
           do k=1,3
-            xl2sp(k,j)=xl2s2(k,j)
+            xl3sp(k,j)=xl3s(k,j)
           enddo
         else
           do k=1,3
-            xl2sp(k,j)=xl2s2(k,j)+al*xn(k)
+            xl3sp(k,j)=xl3s(k,j)+al*xn(k)
           enddo
         endif
       enddo
@@ -419,7 +430,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             enddo
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -446,7 +457,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,6)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -470,7 +481,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,5)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -494,7 +505,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,6)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -518,7 +529,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,6)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -545,7 +556,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,8)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -569,7 +580,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,6)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -593,7 +604,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,7)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -617,7 +628,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,8)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -645,7 +656,7 @@ c     if(id.ne.0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,4)=xl2m(j2,8)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -754,7 +765,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             enddo
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -781,7 +792,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,6)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -805,7 +816,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,5)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -829,7 +840,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,6)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -853,7 +864,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,6)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -880,7 +891,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,8)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -904,7 +915,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,6)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -928,7 +939,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,7)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -952,7 +963,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,3)=xl2m(j2,8)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
@@ -980,7 +991,7 @@ c     if(id .gt. 0 .and. icoveredmelem(id).eq.nelemm)then
             xl2m2(j2,4)=xl2m(j2,8)
           enddo
           call treatmasterface_mortar(
-     &         nopes,slavstraight,xn,xns,xl2s,xl2sp,
+     &         nopes,xn,xns,xl2s,xl3sp,
      &         ipe,ime,iactiveline,nactiveline,
      &         ifacem,
      &         nintpoint,pslavsurf,imastsurf,pmastsurf,
