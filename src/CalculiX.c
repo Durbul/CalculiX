@@ -159,7 +159,7 @@ int main(int argc,char *argv[])
   printf("software, and you are welcome to redistribute it under\n");
   printf("certain conditions, see gpl.htm\n\n");
   printf("************************************************************\n\n");
-  printf("You are using an executable made on Fri Feb  6 10:45:16 CET 2026\n");
+  printf("You are using an executable made on Fri Feb 27 10:02:42 CET 2026\n");
   fflush(stdout);
 
   NNEW(ipoinp,ITG,2*nentries);
@@ -1573,7 +1573,7 @@ int main(int argc,char *argv[])
 		   &nobject,&objectset,&istat,orname,nzsprevstep,&nlabel,
 		   physcon,
 		   jobnamef,iponor,knor,&ne2d,iponoel2d,inoel2d,&mpcend,
-		   dgdxglob,g0,&nodedesi,&ndesi,&nobjectstart,&xdesi,rig);
+		   dgdxglob,g0,&nodedesi,&ndesi,&nobjectstart,&xdesi,rig,fei);
     
       }else{
         sensi_orien(co,&nk,&kon,&ipkon,&lakon,&ne,nodeboun,ndirboun,
