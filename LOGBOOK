@@ -5577,3 +5577,12 @@ Dec 2002        - started to work on single crystal plasticity
                   variables)
 
  2 March 2026   - corrected an error in CalculiX.c
+
+ 10 March 2026  - corrected an error in frictions.f
+
+ 7 April 2026   - corrected an error in addizdofcload.f and rhsnodef.f
+                  (steady state dynamics with cyclic symmetry)
+
+ 13 April 2026  - reversed the change of Juli 16, 2021: intscheme=1 is
+                  moved from before the first call of results.c in
+		  nonlingeo.c to a line after this call.
