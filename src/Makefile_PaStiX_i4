@@ -1,8 +1,8 @@
 # https://calculix.discourse.group/t/building-calculix-with-pastix-on-freebsd-without-cuda/2228
 
 PASTIX_DIR=../../PaStiX4CalculiX/build
-SCOTCH_DIR=/opt/homebrew/Cellar/scotch/7.0.10
-HWLOC_DIR=/opt/homebrew/Cellar/hwloc/2.12.2_1
+SCOTCH_DIR=/opt/homebrew/Cellar/scotch/7.0.11
+HWLOC_DIR=/opt/homebrew/Cellar/hwloc/2.13.0
 BLAS_DIR=/opt/homebrew/Cellar/openblas/0.3.29
 LAPACK_DIR=/opt/homebrew/Cellar/lapack/3.12.1
 
