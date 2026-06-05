@@ -6,8 +6,8 @@ LIBS = \
   -lpthread -lm -lc -L/opt/homebrew/opt/libomp/lib -lomp \
   -framework Accelerate
 
-CFLAGS = -Wall -O3 -I $(INCLUDES) -DARCH="Linux" -DSPOOLES -DARPACK -DMATRIXSTORAGE -DNETWORKOUT -DUSE_MT=1
-FFLAGS = -Wall -O3 -fopenmp -cpp
+CFLAGS = -Wall -O0 -g -I $(INCLUDES) -DARCH="Linux" -DSPOOLES -DARPACK -DMATRIXSTORAGE -DNETWORKOUT -DUSE_MT=1
+FFLAGS = -Wall -O0 -g -fopenmp -cpp
 
 CC=gcc-15
 FC=gfortran-15
