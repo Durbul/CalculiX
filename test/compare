@@ -64,6 +64,43 @@ for i in *.inp; do
 	rm -f ${i%.inp}.frd
 
 #
+#       special treatment for some test cases (assumes *.inp loops in alphabetic order)
+#
+ 
+    if [ $i = axrad2.inp ]
+    then
+        sed -i 's/\*VIEWFACTOR,READ/\*VIEWFACTOR,WRITE/g' axrad2.inp
+    fi
+   
+    if [ $i = beamhtfc2.inp ]
+    then
+        cp -f beamhtfc.rout beamhtfc2.rin
+    fi
+ 
+    if [ $i = beamread.inp ]
+    then
+        $ccx_exe beamwrite >> $tempfile 2>&1
+        cp -f beamwrite.rout beamread.rin
+    fi
+ 
+    if [ $i = beamread2.inp ]
+    then
+        $ccx_exe beamwrite2 >> $tempfile 2>&1
+        cp -f beamwrite2.rout beamread2.rin
+    fi
+ 
+    if [ $i = beamread3.inp ]
+    then
+        $ccx_exe beamwrite3 >> $tempfile 2>&1
+        cp -f beamwrite3.rout beamread3.rin
+    fi
+ 
+    if [ $i = beamread4.inp ]
+    then
+        cp -f beamwrite.rout beamread4.rin
+    fi
+
+#
 #       executing CalculiX and generating the .dat and
 #       the .frd file
 #
