@@ -220,7 +220,6 @@ dattime.f \
 ddeabm.f \
 ddebdf.f \
 deformationplasticitys.f \
-defplas.f \
 delaun.f \
 deltri.f \
 densitys.f \
@@ -813,8 +812,6 @@ smoothbadmid.f \
 smoothbadvertex.f \
 smoothingmidnodes.f \
 smoothingvertexnodes.f \
-smoothshock.f \
-smoothshockappend.f \
 solidsections.f \
 sortev.f \
 spcmatch.f \
@@ -822,6 +819,7 @@ spcmpcmortar.f \
 specificgasconstants.f \
 specificheats.f \
 splitline.f \
+spmv.f \
 spooles_read.f \
 spooles_write.f \
 springdamp_f2f.f \
@@ -838,12 +836,10 @@ springstiff_n2f_th.f \
 statics.f \
 steadystatedynamicss.f \
 steps.f \
-stiff2mat.f \
 stop.f \
 stopwithout201.f \
 storecontactprop.f \
 storeresidual.f \
-str2mat.f \
 straightchannel.f \
 straighteq2d.f \
 straighteq3d.f \
