@@ -1,8 +1,8 @@
 # https://calculix.discourse.group/t/building-calculix-with-pastix-on-freebsd-without-cuda/2228
 
 PASTIX_DIR=../../PaStiX4CalculiX/build
-SCOTCH_DIR=/opt/homebrew/Cellar/scotch/7.0.11
-HWLOC_DIR=/opt/homebrew/Cellar/hwloc/2.13.0
+SCOTCH_DIR=/opt/homebrew/Cellar/scotch/7.0.12
+HWLOC_DIR=/opt/homebrew/Cellar/hwloc/2.14.0
 BLAS_DIR=/opt/homebrew/Cellar/openblas/0.3.29
 LAPACK_DIR=/opt/homebrew/Cellar/lapack/3.12.1
 
@@ -29,8 +29,8 @@ CFLAGS = -Wall -O3 -I $(INCLUDES) -DARCH="Linux" -DPASTIX -DARPACK -DMATRIXSTORA
   -I$(BLAS_DIR)/include
 FFLAGS = -Wall -O3 -fopenmp -cpp
 
-CC=gcc-15
-FC=gfortran-15
+CC=gcc-16
+FC=gfortran-16
 
 .c.o :
 	$(CC) $(CFLAGS) -c $<
