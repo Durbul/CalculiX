@@ -1580,6 +1580,11 @@ void FORTRAN(extern_crackprop,(ITG *ieled,ITG *nedg,ITG *iexternedg,
 			       ITG *nexternnod,ITG *iedg,ITG *iedno,
 			       ITG *ier));
 
+void external_solve(ITG *jq,ITG *irow,double *ad,double *au,double *b,
+       ITG *neq,ITG *nzs,ITG *symmetryflag,ITG *inputformat,double *co,
+       ITG *nk,ITG *nactdof,char *jobnamef,ITG *mi,ITG *idofstart,
+       ITG *ndofpernode,ITG *idofoffset);
+
 void FORTRAN(extfacepernode,(ITG *iponoelfa,ITG *inoelfa,char *lakonfa,
                           ITG *ipkonfa,ITG *konfa,ITG *nsurfs,ITG *inoelsize));
 
@@ -5409,7 +5414,12 @@ void FORTRAN(writesummarydiv,(ITG *istep,ITG *j,ITG *icutb,ITG *l,double *ttime,
 
 void FORTRAN(writetetmesh,(ITG *kontet,ITG *netet_,double *cotet,
      ITG *nktet,double *field,ITG *nfield));
-                        
+                       
+void FORTRAN(writetrilinos,(ITG *jq,ITG *irow,double *ad,double *au,double *b,
+       ITG *neq,ITG *nzs,ITG *symmetryflag,ITG *inputformat,double *co,ITG *nk,
+       ITG *nactdof,char *jobnamefiter, ITG *mi,ITG *idofstart,
+       ITG *ndofpernode,ITG *idofoffset,ITG *iperm,ITG *nfull));
+
 void FORTRAN(writeturdir,(double *xn,char *turdir,ITG *nev));
                         
 void FORTRAN(writeturdircs,(double *xn,char *turdir,ITG *nev,ITG *nm));

@@ -1029,6 +1029,7 @@ electromagnetics.c \
 elementcpuload.c \
 expand.c \
 external.c \
+externalsolver.c \
 feasibledirection.c \
 filterbackwardmain.c \
 filterforwardmain.c \
