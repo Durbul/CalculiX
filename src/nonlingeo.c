@@ -19,6 +19,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <time.h>
 #include "CalculiX.h"
 #include "mortar.h"
 #ifdef SPOOLES
@@ -38,6 +39,8 @@
 #endif
 
 #define max(a,b) ((a) >= (b) ? (a) : (b))
+
+static void printsolvetime(const char *name,struct timespec t0);
 
 void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
 	       ITG *ne,
@@ -93,7 +96,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
   char description[13]="            ",*lakon=NULL,jobnamef[396]="",
     *sideface=NULL,*labmpc=NULL,*lakonf=NULL,*env,*envsys,fneig[132]="",
     *sideloadref=NULL,*sideload=NULL,stiffmatrix[132]="",
-    *sideloadf=NULL,cflag[1]=" "; 
+    *sideloadf=NULL,cflag[1]=" ";
  
   ITG *inum=NULL,k,l,iout=0,icntrl,iinc=0,jprint=0,iit=-1,jnz=0,
     icutb=0,istab=0,uncoupled,n1,n2,itruecontact=1,iclean=0,
@@ -2999,31 +3002,27 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
 	    }
 	  }
 	}
-      
-	/*	for(k=0;k<neq[1];++k){printf("fext=%" ITGFORMAT ",%f\n",k,fext[k]);}
-	for(k=0;k<neq[1];++k){printf("f=%" ITGFORMAT ",%f\n",k,f[k]);}
-	for(k=0;k<neq[1];++k){printf("b=%" ITGFORMAT ",%f\n",k,b[k]);}
-	for(k=0;k<neq[1];++k){printf("ad=%" ITGFORMAT ",%f\n",k,ad[k]);}
-	for(k=0;k<nzs[1];++k){printf("au=%" ITGFORMAT ",%f\n",k,au[k]);}
-	for(k=0;k<nzs[1];++k){printf("irow=%" ITGFORMAT ",%d\n",k,irow[k]);}
-	for(k=0;k<neq[1]+1;++k){printf("jq=%" ITGFORMAT ",%d\n",k,jq[k]);}
-	for(k=0;k<neq[1];++k){printf("icol=%" ITGFORMAT ",%d %d\n",k,icol[k],jq[k+1]-jq[k]);}*/
-      
+
 	if(*isolver==0){
 #ifdef SPOOLES
-	  if(*ithermal<2){
-	    spooles(ad,au,adb,aub,&sigma,b,icol,irow,&neq[0],&nzs[0],
-		    &symmetryflag,&inputformat,&nzs[2]);
-	    
-	  }else if((*ithermal==2)&&(uncoupled)){
-	    n1=neq[1]-neq[0];
-	    n2=nzs[1]-nzs[0];
-	    spooles(&ad[neq[0]],&au[nzs[0]],&adb[neq[0]],&aub[nzs[0]],
-		    &sigma,&b[neq[0]],&icol[neq[0]],iruc,
-		    &n1,&n2,&symmetryflag,&inputformat,&nzs[2]);
-	  }else{
-	    spooles(ad,au,adb,aub,&sigma,b,icol,irow,&neq[1],&nzs[1],
-		    &symmetryflag,&inputformat,&nzs[2]);
+	  {
+	    struct timespec solve_t0;
+	    clock_gettime(CLOCK_MONOTONIC,&solve_t0);
+	    if(*ithermal<2){
+	      spooles(ad,au,adb,aub,&sigma,b,icol,irow,&neq[0],&nzs[0],
+		      &symmetryflag,&inputformat,&nzs[2]);
+
+	    }else if((*ithermal==2)&&(uncoupled)){
+	      n1=neq[1]-neq[0];
+	      n2=nzs[1]-nzs[0];
+	      spooles(&ad[neq[0]],&au[nzs[0]],&adb[neq[0]],&aub[nzs[0]],
+		      &sigma,&b[neq[0]],&icol[neq[0]],iruc,
+		      &n1,&n2,&symmetryflag,&inputformat,&nzs[2]);
+	    }else{
+	      spooles(ad,au,adb,aub,&sigma,b,icol,irow,&neq[1],&nzs[1],
+		      &symmetryflag,&inputformat,&nzs[2]);
+	    }
+	    printsolvetime("SPOOLES",solve_t0);
 	  }
 #else
 	  printf(" *ERROR in nonlingeo: the SPOOLES library is not linked\n\n");
@@ -3114,22 +3113,27 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
 	}
 	else if(*isolver==7){
 #ifdef PARDISO
-	  if(*ithermal<2){
-	    pardiso_main(ad,au,adb,aub,&sigma,b,icol,irow,&neq[0],&nzs[0],
-			 &symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
-	  }else if((*ithermal==2)&&(uncoupled)){
-	    n1=neq[1]-neq[0];
-	    n2=nzs[1]-nzs[0];
-	    NNEW(jqtherm,ITG,n1+1);
-	    for(i=0;i<n1+1;i++){
-	      jqtherm[i]=jq[neq[0]+i]-nzs[0];}
-	    pardiso_main(&ad[neq[0]],&au[nzs[0]],&adb[neq[0]],&aub[nzs[0]],
-			 &sigma,&b[neq[0]],&icol[neq[0]],iruc,
-			 &n1,&n2,&symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
-	    SFREE(jqtherm);
-	  }else{
-	    pardiso_main(ad,au,adb,aub,&sigma,b,icol,irow,&neq[1],&nzs[1],
-			 &symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
+	  {
+	    struct timespec solve_t0;
+	    clock_gettime(CLOCK_MONOTONIC,&solve_t0);
+	    if(*ithermal<2){
+	      pardiso_main(ad,au,adb,aub,&sigma,b,icol,irow,&neq[0],&nzs[0],
+			   &symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
+	    }else if((*ithermal==2)&&(uncoupled)){
+	      n1=neq[1]-neq[0];
+	      n2=nzs[1]-nzs[0];
+	      NNEW(jqtherm,ITG,n1+1);
+	      for(i=0;i<n1+1;i++){
+		jqtherm[i]=jq[neq[0]+i]-nzs[0];}
+	      pardiso_main(&ad[neq[0]],&au[nzs[0]],&adb[neq[0]],&aub[nzs[0]],
+			   &sigma,&b[neq[0]],&icol[neq[0]],iruc,
+			   &n1,&n2,&symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
+	      SFREE(jqtherm);
+	    }else{
+	      pardiso_main(ad,au,adb,aub,&sigma,b,icol,irow,&neq[1],&nzs[1],
+			   &symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
+	    }
+	    printsolvetime("PARDISO",solve_t0);
 	  }
 #else
 	  printf(" *ERROR in nonlingeo: the PARDISO library is not linked\n\n");
@@ -3138,29 +3142,72 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
 	}
 	else if(*isolver==8){
 #ifdef PASTIX
-	  if(*ithermal<2){
-	    pastix_main(ad,au,adb,aub,&sigma,b,icol,irow,&neq[0],&nzs[0],
-			&symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
-	  }else if((*ithermal==2)&&(uncoupled)){
-	    n1=neq[1]-neq[0];
-	    n2=nzs[1]-nzs[0];
-	    NNEW(jqtherm,ITG,n1+1);
-	    for(i=0;i<n1+1;i++){
-	      jqtherm[i]=jq[neq[0]+i]-nzs[0];}
-	    pastix_main(&ad[neq[0]],&au[nzs[0]],&adb[neq[0]],&aub[nzs[0]],
-			&sigma,&b[neq[0]],&icol[neq[0]],iruc,
-			&n1,&n2,&symmetryflag,&inputformat,jqtherm,&nzs[2],&nrhs);
-	    SFREE(jqtherm);
-	  }else{
-	    pastix_main(ad,au,adb,aub,&sigma,b,icol,irow,&neq[1],&nzs[1],
-			&symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
+	  {
+	    struct timespec solve_t0;
+	    clock_gettime(CLOCK_MONOTONIC,&solve_t0);
+	    if(*ithermal<2){
+	      pastix_main(ad,au,adb,aub,&sigma,b,icol,irow,&neq[0],&nzs[0],
+			  &symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
+	    }else if((*ithermal==2)&&(uncoupled)){
+	      n1=neq[1]-neq[0];
+	      n2=nzs[1]-nzs[0];
+	      NNEW(jqtherm,ITG,n1+1);
+	      for(i=0;i<n1+1;i++){
+		jqtherm[i]=jq[neq[0]+i]-nzs[0];}
+	      pastix_main(&ad[neq[0]],&au[nzs[0]],&adb[neq[0]],&aub[nzs[0]],
+			  &sigma,&b[neq[0]],&icol[neq[0]],iruc,
+			  &n1,&n2,&symmetryflag,&inputformat,jqtherm,&nzs[2],&nrhs);
+	      SFREE(jqtherm);
+	    }else{
+	      pastix_main(ad,au,adb,aub,&sigma,b,icol,irow,&neq[1],&nzs[1],
+			  &symmetryflag,&inputformat,jq,&nzs[2],&nrhs);
+	    }
+	    printsolvetime("PASTIX",solve_t0);
 	  }
 #else
 	  printf(" *ERROR in nonlingeo: the PASTIX library is not linked\n\n");
 	  FORTRAN(stop,());
 #endif
 	}
-	  
+	else if(*isolver==9){
+
+	  /* writes the system to an external solver process and reads the
+	     solution back into b, one call per active physical block,
+	     mirroring the ithermal<2 / uncoupled / else split PARDISO and
+	     PASTIX use above; idofstart/ndofpernode pick out which slice
+	     of nactdof (0=temperature, 1-3=translations) each call covers */
+
+	  if(*ithermal<2){
+	    ITG idofstart=1,ndofpernode=3,idofoffset=0;
+	    external_solve(jq,irow,ad,au,b,&neq[0],&nzs[0],&symmetryflag,
+			   &inputformat,co,nk,nactdof,jobnamef,mi,&idofstart,
+			   &ndofpernode,&idofoffset);
+	  }else if((*ithermal==2)&&(uncoupled)){
+	    ITG idofstart,ndofpernode,idofoffset;
+
+	    idofstart=1;ndofpernode=3;idofoffset=0;
+	    external_solve(jq,irow,ad,au,b,&neq[0],&nzs[0],&symmetryflag,
+			   &inputformat,co,nk,nactdof,jobnamef,mi,&idofstart,
+			   &ndofpernode,&idofoffset);
+
+	    n1=neq[1]-neq[0];
+	    n2=nzs[1]-nzs[0];
+	    NNEW(jqtherm,ITG,n1+1);
+	    for(i=0;i<n1+1;i++){
+	      jqtherm[i]=jq[neq[0]+i]-nzs[0];}
+	    idofstart=0;ndofpernode=1;idofoffset=neq[0];
+	    external_solve(jqtherm,iruc,&ad[neq[0]],&au[nzs[0]],&b[neq[0]],
+			   &n1,&n2,&symmetryflag,&inputformat,co,nk,nactdof,
+			   jobnamef,mi,&idofstart,&ndofpernode,&idofoffset);
+	    SFREE(jqtherm);
+	  }else{
+	    ITG idofstart=0,ndofpernode=mi[1]+1,idofoffset=0;
+	    external_solve(jq,irow,ad,au,b,&neq[1],&nzs[1],&symmetryflag,
+			   &inputformat,co,nk,nactdof,jobnamef,mi,&idofstart,
+			   &ndofpernode,&idofoffset);
+	  }
+	}
+
 	if(*mortar<=1){
 	  if(isensitivity){
 	    SFREE(adcpy);MNEW(adcpy,double,neq[1]);
@@ -4390,6 +4437,15 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
   (*ttime)+=(*tper);
 
   SFREE(iponoel);if(nramp>=0){SFREE(inoel);}
-  
+
   return;
+}
+
+/* prints elapsed wall time since t0, tagged with the solver name -- used
+   to compare solve-only time across solvers in the Newton loop */
+static void printsolvetime(const char *name,struct timespec t0){
+  struct timespec t1;
+  clock_gettime(CLOCK_MONOTONIC,&t1);
+  printf(" %s solve time: %f s\n\n",name,
+	 (t1.tv_sec-t0.tv_sec)+(t1.tv_nsec-t0.tv_nsec)*1.e-9);
 }
