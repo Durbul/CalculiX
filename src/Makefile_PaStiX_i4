@@ -3,7 +3,7 @@
 PASTIX_DIR=../../PaStiX4CalculiX/build
 SCOTCH_DIR=/opt/homebrew/Cellar/scotch/7.0.12
 HWLOC_DIR=/opt/homebrew/Cellar/hwloc/2.14.0
-BLAS_DIR=/opt/homebrew/Cellar/openblas/0.3.29
+BLAS_DIR=/opt/homebrew/Cellar/openblas/0.3.34
 LAPACK_DIR=/opt/homebrew/Cellar/lapack/3.12.1
 
 INCLUDES= \
