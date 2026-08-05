@@ -2,6 +2,8 @@ src/*.o
 src/CalculiX_*
 src/*.a
 
+.vscode/
+
 doc/*.pdf
 doc/*.ps
 doc/*.aux
